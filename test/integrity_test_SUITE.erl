@@ -17,7 +17,9 @@ groups() -> [
         local2utc_ts,
         utc2local_xx,
         is_timezone_valid,
-        test_format
+        test_format,
+        timestamp_range,
+        timezones
     ]}
 ].
 
@@ -27,6 +29,30 @@ init_per_suite(Config) ->
 
 end_per_suite(_Config) ->
     elocaltime:stop().
+
+timezones(_Config) ->
+    {ok, Zones} = elocaltime:timezones(),
+    true = lists:member(<<"America/Vancouver">>, Zones),
+    true = lists:member(<<"Canada/Pacific">>, Zones),
+    true = lists:member(<<"UTC">>, Zones),
+    false = lists:member(<<"localtime">>, Zones),
+    false = lists:member(<<"posix/America/Vancouver">>, Zones),
+    true = lists:all(fun elocaltime:is_timezone_valid/1, Zones),
+    true.
+
+%% Negative Unix timestamps must remain signed. Converting second-resolution
+%% timestamps through the platform nanosecond clock overflows after 2262.
+timestamp_range(_Config) ->
+    lists:foreach(fun(Year) ->
+        Date = {{Year,1,15},{12,0,0}},
+        Stamp = elocaltime_utils:datetime2ts(Date),
+        {ok, Date} = elocaltime:utc2local_datetime(Date, ?TIMEZONE_UTC),
+        {ok, #civil_lookup{civil_kind = unique, pre = Stamp, post = Stamp}} =
+            elocaltime:civil_lookup(Date, ?TIMEZONE_UTC),
+        Expected = list_to_binary(io_lib:format("~4..0B-01-15 12:00:00", [Year])),
+        {ok, Expected} = elocaltime:format(<<"%E4Y-%m-%d %H:%M:%S">>, Stamp)
+    end, [1, 1900, 1960, 1970, 2038, 2263, 2300, 9999]),
+    true.
 
 test_timezone(_Config) ->
     {ok,{{2017,3,26},{2,0,0}}} = elocaltime:utc2local_datetime({{2017,3,26},{0,0,0}}, <<"Europe/Bucharest">>),

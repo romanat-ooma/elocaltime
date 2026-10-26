@@ -4,6 +4,24 @@
 
 Erlang library for converting between local times using [Google CCTZ][1].
 
+## Runtime timezone data
+
+Named zones use the runtime OS zoneinfo files, normally `/usr/share/zoneinfo`.
+Set `TZDIR` before starting the Erlang VM to select another directory.
+Keep the OS tzdata package current and restart the full Erlang VM after an
+update; stopping and starting this application does not clear CCTZ's cache.
+
+Version 1.6.0 keeps Unix timestamps signed and uses whole-second clock values,
+covering pre-1970 and post-2262 dates without timestamp wraparound. The native
+integrity suite includes those boundaries. Run it with `bash test/run.sh`.
+
+This fork is used to test the Kazoo core integration before publishing the
+fixed dependency under 2600hz/elocaltime.
+
+`timezones/0` returns `{ok, Names}` for the compiled OS TZif files, including
+IANA aliases. It excludes machine-local shortcuts and alternative posix/right
+trees. Build tools can enumerate names without starting the native provider.
+
 ## Getting Started
 
 ### Integration
