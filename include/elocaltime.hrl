@@ -11,7 +11,7 @@
 -define(CIVIL_KIND_SKIPPED, skipped).
 -define(CIVIL_KIND_REPEATED, repeated).
 
--type timestamp() :: non_neg_integer().
+-type timestamp() :: integer().
 -type civil_kind() :: ?CIVIL_KIND_REPEATED | ?CIVIL_KIND_UNIQUE | ?CIVIL_KIND_SKIPPED.
 
 -record(absolute_lookup, {

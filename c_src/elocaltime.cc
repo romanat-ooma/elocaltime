@@ -10,17 +10,20 @@
 
 namespace {
 
+// Keep whole seconds throughout: the platform clock duration can overflow at 2262.
+using TimePoint = std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds>;
+
 cctz::time_zone kUtcTz = cctz::utc_time_zone();
 
 const char kUnknownTimezone[] = "unknown timezone";
 
-std::chrono::system_clock::time_point timestamp2tp(uint64_t ts)
+TimePoint timestamp2tp(int64_t ts)
 {
-    std::chrono::duration<uint64_t> sec(ts);
-    return std::chrono::system_clock::time_point(std::chrono::duration_cast<std::chrono::system_clock::duration>(sec));
+    std::chrono::duration<int64_t> sec(ts);
+    return TimePoint(sec);
 }
 
-uint64_t tp2timestamp(const std::chrono::system_clock::time_point& tp)
+int64_t tp2timestamp(const TimePoint& tp)
 {
     return std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count();
 }
@@ -55,10 +58,10 @@ public:
     void load_utc_timezone();
     void load_local_timezone();
     void load_fixed_timezone(int32_t offset);
-    std::string format(const std::string& format, std::chrono::system_clock::time_point tp);
+    std::string format(const std::string& format, TimePoint tp);
 
     cctz::time_zone::civil_lookup lookup(const cctz::civil_second& sec);
-    cctz::time_zone::absolute_lookup lookup(uint64_t seconds);
+    cctz::time_zone::absolute_lookup lookup(int64_t seconds);
 
 private:
     
@@ -92,12 +95,12 @@ cctz::time_zone::civil_lookup TimeZoneWrapper::lookup(const cctz::civil_second& 
     return tz_.lookup(sec);
 }
 
-cctz::time_zone::absolute_lookup TimeZoneWrapper::lookup(uint64_t seconds)
+cctz::time_zone::absolute_lookup TimeZoneWrapper::lookup(int64_t seconds)
 {
     return tz_.lookup(timestamp2tp(seconds));
 }
 
-std::string TimeZoneWrapper::format(const std::string& format, std::chrono::system_clock::time_point tp)
+std::string TimeZoneWrapper::format(const std::string& format, TimePoint tp)
 {
     return cctz::format(format, tp, tz_);
 }
@@ -171,15 +174,15 @@ ERL_NIF_TERM enif_timezone_absolute_lookup(ErlNifEnv* env, int argc, const ERL_N
     elocatime_data* data = static_cast<elocatime_data*>(enif_priv_data(env));
 
     enif_timezone* timezone;
-    unsigned long timestamp;
+    ErlNifSInt64 timestamp;
 
     if(!enif_get_resource(env, argv[1], data->res_timezone, (void**)&timezone))
         return make_badarg(env);
 
-    if(!enif_get_uint64(env, argv[0], &timestamp))
+    if(!enif_get_int64(env, argv[0], &timestamp))
         return make_badarg(env);
 
-    cctz::time_zone::absolute_lookup lookup = timezone->tz->lookup(static_cast<uint64_t>(timestamp));
+    cctz::time_zone::absolute_lookup lookup = timezone->tz->lookup(static_cast<int64_t>(timestamp));
 
     ERL_NIF_TERM nif_date = enif_make_tuple3(env,
                                              enif_make_int(env, lookup.cs.year()),
@@ -238,9 +241,9 @@ ERL_NIF_TERM enif_timezone_civil_lookup(ErlNifEnv* env, int argc, const ERL_NIF_
     return make_ok_result(env, enif_make_tuple5(env,
                                                 ATOMS.atomCivilLookup,
                                                 kind2atom(lookup.kind),
-                                                enif_make_uint64(env, tp2timestamp(lookup.pre)),
-                                                enif_make_uint64(env, tp2timestamp(lookup.trans)),
-                                                enif_make_uint64(env, tp2timestamp(lookup.post))));
+                                                enif_make_int64(env, tp2timestamp(lookup.pre)),
+                                                enif_make_int64(env, tp2timestamp(lookup.trans)),
+                                                enif_make_int64(env, tp2timestamp(lookup.post))));
 }
 
 ERL_NIF_TERM enif_format(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
@@ -250,12 +253,12 @@ ERL_NIF_TERM enif_format(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     elocatime_data* data = static_cast<elocatime_data*>(enif_priv_data(env));
 
     std::string format;
-    unsigned long timestamp;
+    ErlNifSInt64 timestamp;
 
     if(!get_string(env, argv[0], &format))
         return make_badarg(env);
 
-    if(!enif_get_uint64(env, argv[1], &timestamp))
+    if(!enif_get_int64(env, argv[1], &timestamp))
         return make_badarg(env);
 
     if(argc == 3)
