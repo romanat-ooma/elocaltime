@@ -16,6 +16,7 @@
     local2utc_ts/3,
     local2utc_datetime/3,
     is_timezone_valid/1,
+    timezones/0,
 
     format/2,
     format/3
@@ -124,6 +125,12 @@ local2utc_datetime(Date, Timezone, Disambiguation) ->
 
 is_timezone_valid(Timezone) ->
     elocaltime_timezone:is_valid(Timezone).
+
+%% Compiled OS timezone files, including aliases. Does not require the NIF
+%% to be running, so build tools can use the same inventory as the runtime.
+-spec timezones() -> {ok, [binary()]} | {error, term()}.
+timezones() ->
+    elocaltime_zoneinfo:timezones().
 
 -spec format(binary(), datetime()) ->
     {ok, binary()}.

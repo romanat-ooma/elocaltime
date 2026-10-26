@@ -18,7 +18,8 @@ groups() -> [
         utc2local_xx,
         is_timezone_valid,
         test_format,
-        timestamp_range
+        timestamp_range,
+        timezones
     ]}
 ].
 
@@ -28,6 +29,16 @@ init_per_suite(Config) ->
 
 end_per_suite(_Config) ->
     elocaltime:stop().
+
+timezones(_Config) ->
+    {ok, Zones} = elocaltime:timezones(),
+    true = lists:member(<<"America/Vancouver">>, Zones),
+    true = lists:member(<<"Canada/Pacific">>, Zones),
+    true = lists:member(<<"UTC">>, Zones),
+    false = lists:member(<<"localtime">>, Zones),
+    false = lists:member(<<"posix/America/Vancouver">>, Zones),
+    true = lists:all(fun elocaltime:is_timezone_valid/1, Zones),
+    true.
 
 %% Negative Unix timestamps must remain signed. Converting second-resolution
 %% timestamps through the platform nanosecond clock overflows after 2262.
